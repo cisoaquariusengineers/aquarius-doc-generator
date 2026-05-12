@@ -96,12 +96,16 @@ def draw_background(c, bg_bytes):
     c.drawImage(ImageReader(io.BytesIO(bg_bytes)), 0, 0,
                 width=PAGE_W, height=PAGE_H, preserveAspectRatio=False)
 
-
-def draw_footer_centered(c, doc_name):
+def draw_footer_centered(c, doc_name, part_no=""):
     cx = (LEFT_MM + RIGHT_MM) / 2 * mm
-    c.setFont("Helvetica-Bold", 25)
+    # Bold description on top
+    c.setFont("Helvetica-Bold", 11)
     c.setFillColorRGB(0, 0, 0)
-    c.drawCentredString(cx, FCENTER_MM * mm, doc_name)
+    c.drawCentredString(cx, (FCENTER_MM + 4) * mm, doc_name)
+    # Part number below, normal weight
+    if part_no:
+        c.setFont("Helvetica", 9)
+        c.drawCentredString(cx, (FCENTER_MM - 1) * mm, part_no)
 
 def draw_excel_table(c, rows):
     aw = AVAIL_W_MM * mm
@@ -154,23 +158,27 @@ def draw_content_image(c, content_bytes):
 
 
 def generate_pdf(xlsx_bytes, xlsx_name, content_bytes, doc_name) -> bytes:
-    bg_bytes = load_background()
-    rows     = read_excel_rows(xlsx_bytes)
+    bg_bytes  = load_background()
+    rows      = read_excel_rows(xlsx_bytes)
     img_bytes = extract_image_from_drawing(content_bytes)
+
+    # Pull description + part no from first data row (row index 1)
+    part_desc = rows[1][4] if len(rows) > 1 and len(rows[1]) > 4 else doc_name
+    part_no   = rows[1][1] if len(rows) > 1 and len(rows[1]) > 1 else ""
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
 
-    # Page 1 — Excel table
+    # Page 1 — Engineering drawing
     draw_background(c, bg_bytes)
     draw_content_image(c, img_bytes)
-    draw_footer_centered(c, doc_name)
+    draw_footer_centered(c, part_desc, part_no)
     c.showPage()
-    
-    # Page 2 — Engineering drawing
+
+    # Page 2 — Parts table
     draw_background(c, bg_bytes)
     draw_excel_table(c, rows)
-    draw_footer_centered(c, doc_name)
+    draw_footer_centered(c, part_desc, part_no)
     c.showPage()
 
     c.save()

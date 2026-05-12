@@ -99,12 +99,12 @@ def draw_background(c, bg_bytes):
 def draw_footer_centered(c, doc_name, part_no=""):
     cx = (LEFT_MM + RIGHT_MM) / 2 * mm
     # Bold description on top
-    c.setFont("Helvetica-Bold", 11)
+    c.setFont("Helvetica-Bold", 20)
     c.setFillColorRGB(0, 0, 0)
     c.drawCentredString(cx, (FCENTER_MM + 4) * mm, doc_name)
     # Part number below, normal weight
     if part_no:
-        c.setFont("Helvetica", 9)
+        c.setFont("Helvetica", 12)
         c.drawCentredString(cx, (FCENTER_MM - 1) * mm, part_no)
 
 def draw_excel_table(c, rows):
@@ -113,8 +113,8 @@ def draw_excel_table(c, rows):
     cw = [aw * 0.04, aw * 0.15, aw * 0.05, aw * 0.20, aw * 0.56] # Widened to prevent wrap
     
     # FIX: Increased leading to 20 so 15pt font doesn't overlap
-    cs = ParagraphStyle("c", fontName="Times-Roman", fontSize=15, leading=16)
-    hs = ParagraphStyle("h", fontName="Times-Bold", fontSize=16, leading=17)
+    cs = ParagraphStyle("c", fontName="Times-Roman", fontSize=13, leading=16)
+    hs = ParagraphStyle("h", fontName="Times-Bold", fontSize=15, leading=17)
     
     data = [
         [Paragraph(str(cell), hs if i == 0 else cs) for cell in row]

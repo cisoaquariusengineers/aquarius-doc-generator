@@ -29,7 +29,7 @@ AVAIL_W_MM = RIGHT_MM - LEFT_MM
 AVAIL_H_MM = CTOP_MM  - CBOT_MM
 
 # ─── Background template ──────────────────────────────────────────────────────
-BG_PATH = os.path.join(os.path.dirname(__file__), "Background_pdf.pdf")
+BG_PATH = os.path.join(os.path.dirname(__file__), "empty page_03.pdf")
 
 @st.cache_data
 def load_background():

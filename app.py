@@ -134,14 +134,20 @@ def draw_excel_table(c, rows):
 def draw_content_image(c, content_bytes):
     aw = AVAIL_W_MM * mm
     ah = AVAIL_H_MM * mm
+    # ADJUST THIS: 0.8 = 80% size, 0.5 = 50% size
+    scale_factor = 0.7 
     pil = Image.open(io.BytesIO(content_bytes))
     asp = pil.width / pil.height
+    # Calculate original max fit
     dw, dh = (aw, aw / asp) if aw / asp <= ah else (ah * asp, ah)
+    # Apply the scale reduction
+    dw *= scale_factor
+    dh *= scale_factor
+    # Centers the smaller image in the available area
     ix = LEFT_MM * mm + (aw - dw) / 2
     iy = CBOT_MM * mm + (ah - dh) / 2
     c.drawImage(ImageReader(io.BytesIO(content_bytes)), ix, iy,
                 width=dw, height=dh, preserveAspectRatio=True)
-
 
 def generate_pdf(xlsx_bytes, xlsx_name, content_bytes, doc_name) -> bytes:
     bg_bytes = load_background()

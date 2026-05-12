@@ -96,6 +96,11 @@ def read_excel_rows(file_bytes: bytes) -> list:
     for row in ws.iter_rows(values_only=True):
         if any(v is not None for v in row):
             rows.append([str(v) if v is not None else "" for v in row[:5]])
+    
+    # If more than 30 rows, keep only first 25 (header + 24 data rows)
+    if len(rows) > 30:
+        rows = rows[:25]
+    
     return rows
 
 

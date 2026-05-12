@@ -39,40 +39,65 @@ def load_background():
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 def extract_image_from_drawing(file_bytes: bytes) -> bytes:
-    """Extract an image from either a ZIP-wrapped PDF or a plain PDF."""
-    
-    # 1. Try ZIP first (some CAD-export PDFs are ZIP containers)
-    if zipfile.is_zipfile(io.BytesIO(file_bytes)):
-        with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as z:
-            name = next(
-                (n for n in z.namelist() if n.lower().endswith((".jpeg", ".jpg", ".png"))),
-                None,
-            )
-            if name:
-                return z.read(name)
+    errors = []
 
-    # 2. Try to rasterize the first page of the PDF → PNG in memory
+    # Step 1: ZIP check
+    is_zip = zipfile.is_zipfile(io.BytesIO(file_bytes))
+    if is_zip:
+        with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as z:
+            names = z.namelist()
+            img_name = next(
+                (n for n in names if n.lower().endswith(
+                    (".jpeg", ".jpg", ".png"))), None)
+            if img_name:
+                return z.read(img_name)
+            errors.append(f"ZIP ok but no image found. Contents: {names}")
+    else:
+        errors.append("Not a ZIP file.")
+
+    # Step 2: pdf2image / poppler
     try:
         import pdf2image
-        images = pdf2image.convert_from_bytes(file_bytes, dpi=150, first_page=1, last_page=1)
+        images = pdf2image.convert_from_bytes(
+            file_bytes, dpi=150, first_page=1, last_page=1)
         if images:
             buf = io.BytesIO()
             images[0].save(buf, format="PNG")
             return buf.getvalue()
-    except Exception:
-        pass
+        errors.append("pdf2image returned no pages.")
+    except Exception as e:
+        errors.append(f"pdf2image failed: {e}")
 
-    # 3. Fallback: try extracting an embedded image via pypdf
+    # Step 3: pypdf embedded images
     try:
         import pypdf
         reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-        for page in reader.pages:
-            for img_obj in page.images:
-                return img_obj.data
-    except Exception:
-        pass
+        n_pages = len(reader.pages)
+        found = []
+        for i, page in enumerate(reader.pages):
+            imgs = list(page.images)
+            found.append(f"page {i}: {len(imgs)} images")
+            if imgs:
+                return imgs[0].data
+        errors.append(f"pypdf ok ({n_pages} pages) but no images. {found}")
+    except Exception as e:
+        errors.append(f"pypdf failed: {e}")
 
-    raise ValueError("Could not extract an image from the uploaded drawing PDF.")
+    # Step 4: fitz / PyMuPDF
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        page = doc[0]
+        mat = fitz.Matrix(2, 2)   # 2× zoom ≈ 144 dpi
+        pix = page.get_pixmap(matrix=mat, alpha=False)
+        buf = io.BytesIO(pix.tobytes("png"))
+        return buf.getvalue()
+    except Exception as e:
+        errors.append(f"PyMuPDF failed: {e}")
+
+    raise ValueError(
+        "Could not extract image from PDF.\n" + "\n".join(errors)
+    )
 
 def read_excel_rows(file_bytes: bytes) -> list:
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes))

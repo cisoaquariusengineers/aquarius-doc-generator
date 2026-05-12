@@ -107,26 +107,23 @@ def draw_footer_centered(c, doc_name):
 def draw_excel_table(c, rows):
     aw = AVAIL_W_MM * mm
     ah = AVAIL_H_MM * mm
-    cw = [aw * 0.055, aw * 0.130, aw * 0.055, aw * 0.180, aw * 0.580]
-    cs = ParagraphStyle("c", fontName="Helvetica",      fontSize=7.5, leading=9.5)
-    hs = ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=7.5, leading=9.5)
+    cw = [aw * 0.04, aw * 0.10, aw * 0.04, aw * 0.14, aw * 0.45]  # narrower cols
+    cs = ParagraphStyle("c", fontName="Helvetica",      fontSize=8.5, leading=11)
+    hs = ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=8.5, leading=11)
     data = [
         [Paragraph(cell, hs if i == 0 else cs) for cell in row]
         for i, row in enumerate(rows)
     ]
     t = Table(data, colWidths=cw)
     t.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1,  0), colors.HexColor("#1a3a5c")),
-        ("TEXTCOLOR",     (0, 0), (-1,  0), colors.white),
-        ("BACKGROUND",    (0, 1), (-1,  1), colors.HexColor("#e8f0f8")),
-        ("ROWBACKGROUNDS",(0, 2), (-1, -1), [colors.white, colors.HexColor("#f5f8fc")]),
-        ("GRID",          (0, 0), (-1, -1), 0.4, colors.HexColor("#b0c4d8")),
+        ("TEXTCOLOR",     (0, 0), (-1, -1), colors.black),
+        ("LINEBELOW",     (0, 0), (-1,  0), 0.8, colors.black),   # header underline only
+        ("LINEBELOW",     (0, 1), (-1, -1), 0.3, colors.HexColor("#cccccc")),  # subtle row dividers
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
-        ("LINEBELOW",     (0, 0), (-1,  0), 1.2, colors.HexColor("#1a3a5c")),
+        ("TOPPADDING",    (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
     ]))
     _, th = t.wrapOn(c, aw, ah)
     t.drawOn(c, LEFT_MM * mm, CTOP_MM * mm - th)

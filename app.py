@@ -31,12 +31,10 @@ AVAIL_H_MM = CTOP_MM  - CBOT_MM
 # ─── Background template ──────────────────────────────────────────────────────
 BG_PATH = os.path.join(os.path.dirname(__file__), "empty page_03.pdf")
 
-@st.cache_data
 def load_background():
     with zipfile.ZipFile(BG_PATH, "r") as z:
         name = next(n for n in z.namelist() if n.lower().endswith((".jpeg", ".jpg", ".png")))
         return z.read(name)
-
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def extract_image_from_drawing(file_bytes: bytes) -> bytes:

@@ -4,4 +4,5 @@ reportlab>=4.0.0
 Pillow>=10.0.0
 pandas>=2.0.0
 pdf2image>=1.16.0
-pypdf>=3.0.0
+pypdf
+PyMuPDF

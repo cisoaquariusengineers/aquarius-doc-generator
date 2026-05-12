@@ -122,7 +122,7 @@ def draw_footer_centered(c, doc_name, part_no=""):
     c.drawCentredString(cx, (FCENTER_MM + 6) * mm, doc_name)
     if part_no:
         c.setFont("Helvetica", 12)
-        c.drawCentredString(cx, (FCENTER_MM - 2) * mm, part_no)   # +5mm gap between lines
+        c.drawCentredString(cx, (FCENTER_MM - 1.5) * mm, part_no)   # +5mm gap between lines
 
 def draw_badge(c, group_no: str, ref_no: str):
     rx = (RIGHT_MM - 2) * mm
@@ -131,7 +131,7 @@ def draw_badge(c, group_no: str, ref_no: str):
     c.drawRightString(rx, (FCENTER_MM + 6) * mm, group_no)   # same Y as doc_name
     if ref_no:
         c.setFont("Helvetica", 13)
-        c.drawRightString(rx, (FCENTER_MM - 2) * mm, ref_no)  # same Y as part_no, +5mm gap
+        c.drawRightString(rx, (FCENTER_MM - 1.5) * mm, ref_no)  # same Y as part_no, +5mm gap
 
 def draw_page_number(c, page_num: int):
     """Page number centred at the very bottom of the page."""

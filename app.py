@@ -17,18 +17,18 @@ from reportlab.lib import colors
 st.set_page_config(
     page_title="Aquarius Document Generator",
     page_icon="📄",
-    layout="centered",
+    layout="wide",
 )
 
-# ─── Layout constants (pixel-measured from the 1316×924 background template) ─
+# ─── Layout constants ─────────────────────────────────────────────────────────
 PAGE_W, PAGE_H = landscape((420 * mm, 297 * mm))
 LEFT_MM    = 17.87;  RIGHT_MM   = 399.57
 CTOP_MM    = 279.32; CBOT_MM    = 42.11
 FCENTER_MM = 30.05
-AVAIL_W_MM = RIGHT_MM - LEFT_MM   # 381.70 mm
-AVAIL_H_MM = CTOP_MM  - CBOT_MM   # 237.21 mm
+AVAIL_W_MM = RIGHT_MM - LEFT_MM
+AVAIL_H_MM = CTOP_MM  - CBOT_MM
 
-# ─── Background template (bundled with the app) ───────────────────────────────
+# ─── Background template ──────────────────────────────────────────────────────
 BG_PATH = os.path.join(os.path.dirname(__file__), "Background_pdf.pdf")
 
 @st.cache_data
@@ -37,12 +37,11 @@ def load_background():
         name = next(n for n in z.namelist() if n.lower().endswith((".jpeg", ".jpg", ".png")))
         return z.read(name)
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def extract_image_from_drawing(file_bytes: bytes) -> bytes:
-    """Extract an image from either a ZIP-wrapped PDF or a plain PDF."""
-    
-    # 1. Try ZIP first (some CAD-export PDFs are ZIP containers)
+    errors = []
+
     if zipfile.is_zipfile(io.BytesIO(file_bytes)):
         with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as z:
             name = next(
@@ -51,29 +50,43 @@ def extract_image_from_drawing(file_bytes: bytes) -> bytes:
             )
             if name:
                 return z.read(name)
+            errors.append(f"ZIP ok but no image. Contents: {z.namelist()}")
+    else:
+        errors.append("Not a ZIP file.")
 
-    # 2. Try to rasterize the first page of the PDF → PNG in memory
+    try:
+        import fitz
+        doc  = fitz.open(stream=file_bytes, filetype="pdf")
+        page = doc[0]
+        mat  = fitz.Matrix(2.5, 2.5)
+        pix  = page.get_pixmap(matrix=mat, alpha=False)
+        return pix.tobytes("png")
+    except Exception as e:
+        errors.append(f"PyMuPDF failed: {e}")
+
     try:
         import pdf2image
-        images = pdf2image.convert_from_bytes(file_bytes, dpi=150, first_page=1, last_page=1)
-        if images:
+        imgs = pdf2image.convert_from_bytes(file_bytes, dpi=150, first_page=1, last_page=1)
+        if imgs:
             buf = io.BytesIO()
-            images[0].save(buf, format="PNG")
+            imgs[0].save(buf, format="PNG")
             return buf.getvalue()
-    except Exception:
-        pass
+        errors.append("pdf2image returned no pages.")
+    except Exception as e:
+        errors.append(f"pdf2image failed: {e}")
 
-    # 3. Fallback: try extracting an embedded image via pypdf
     try:
         import pypdf
         reader = pypdf.PdfReader(io.BytesIO(file_bytes))
-        for page in reader.pages:
-            for img_obj in page.images:
-                return img_obj.data
-    except Exception:
-        pass
+        for pg in reader.pages:
+            imgs = list(pg.images)
+            if imgs:
+                return imgs[0].data
+        errors.append("pypdf: no embedded images.")
+    except Exception as e:
+        errors.append(f"pypdf failed: {e}")
 
-    raise ValueError("Could not extract an image from the uploaded drawing PDF.")
+    raise ValueError("Could not extract image from PDF.\n" + "\n".join(errors))
 
 
 def read_excel_rows(file_bytes: bytes) -> list:
@@ -90,201 +103,274 @@ def derive_doc_name(filename: str) -> str:
     base = os.path.splitext(filename)[0]
     return base.replace("__", "  ").replace("_", " ")
 
-# ─── PDF generation ───────────────────────────────────────────────────────────
+
+# ─── PDF drawing helpers ──────────────────────────────────────────────────────
 
 def draw_background(c, bg_bytes):
     c.drawImage(ImageReader(io.BytesIO(bg_bytes)), 0, 0,
                 width=PAGE_W, height=PAGE_H, preserveAspectRatio=False)
 
+
 def draw_footer_centered(c, doc_name, part_no=""):
     cx = (LEFT_MM + RIGHT_MM) / 2 * mm
-    # Bold description on top
-    c.setFont("Helvetica-Bold", 20)
+    c.setFont("Helvetica-Bold", 11)
     c.setFillColorRGB(0, 0, 0)
     c.drawCentredString(cx, (FCENTER_MM + 4) * mm, doc_name)
-    # Part number below, normal weight
     if part_no:
-        c.setFont("Helvetica", 12)
+        c.setFont("Helvetica", 9)
         c.drawCentredString(cx, (FCENTER_MM - 1) * mm, part_no)
+
+
+def draw_badge(c, group_no: str, ref_no: str):
+    """Oval badge bottom-right — group number large on top, ref no smaller below."""
+    # Oval geometry — anchored to bottom-right of footer
+    ow = 40 * mm
+    oh = 17 * mm
+    ox = RIGHT_MM * mm - ow - 1 * mm   # left edge
+    oy = FCENTER_MM * mm - oh / 2       # bottom edge (vertically centred in footer)
+
+    c.saveState()
+    c.setStrokeColorRGB(0, 0, 0)
+    c.setFillColorRGB(1, 1, 1)
+    c.setLineWidth(0.8)
+    c.ellipse(ox, oy, ox + ow, oy + oh, fill=1, stroke=1)
+
+    cx = ox + ow / 2
+    c.setFillColorRGB(0, 0, 0)
+
+    # Group number — large bold, upper half
+    c.setFont("Helvetica-Bold", 14)
+    c.drawCentredString(cx, oy + oh * 0.54, group_no)
+
+    # Reference number — small, lower half
+    c.setFont("Helvetica", 8)
+    c.drawCentredString(cx, oy + oh * 0.16, ref_no)
+
+    c.restoreState()
+
+
+def draw_page_number(c, page_num: int):
+    """Page number centred at the very bottom of the page."""
+    c.setFont("Helvetica", 8)
+    c.setFillColorRGB(0, 0, 0)
+    cx = (LEFT_MM + RIGHT_MM) / 2 * mm
+    c.drawCentredString(cx, 6 * mm, str(page_num))
+
 
 def draw_excel_table(c, rows):
     aw = AVAIL_W_MM * mm
     ah = AVAIL_H_MM * mm
-    cw = [aw * 0.04, aw * 0.15, aw * 0.05, aw * 0.20, aw * 0.56] # Widened to prevent wrap
-    
-    # FIX: Increased leading to 20 so 15pt font doesn't overlap
+    cw = [aw * 0.04, aw * 0.15, aw * 0.05, aw * 0.20, aw * 0.56]
+
     cs = ParagraphStyle("c", fontName="Times-Roman", fontSize=13, leading=16)
-    hs = ParagraphStyle("h", fontName="Times-Bold", fontSize=15, leading=17)
-    
+    hs = ParagraphStyle("h", fontName="Times-Bold",  fontSize=15, leading=17)
+
     data = [
         [Paragraph(str(cell), hs if i == 0 else cs) for cell in row]
         for i, row in enumerate(rows)
     ]
-    
+
     t = Table(data, colWidths=cw)
     t.setStyle(TableStyle([
         ("TEXTCOLOR",     (0, 0), (-1, -1), colors.black),
-        # REMOVED: Black line below header is gone
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 3.6),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3.3),
         ("LEFTPADDING",   (0, 0), (-1, -1), 5),
         ("RIGHTPADDING",  (0, 0), (-1, -1), 3),
     ]))
-    margin_top = 0.8 * mm 
-    
+
     _, th = t.wrapOn(c, aw, ah)
-    
-    # Subtracting margin_top moves it down
-    t.drawOn(c, LEFT_MM * mm, (CTOP_MM * mm - th) - margin_top)
+    t.drawOn(c, LEFT_MM * mm, (CTOP_MM * mm - th) - 0.8 * mm)
+
 
 def draw_content_image(c, content_bytes):
     aw = AVAIL_W_MM * mm
     ah = AVAIL_H_MM * mm
-    # ADJUST THIS: 0.8 = 80% size, 0.5 = 50% size
     scale_factor = 0.89
     pil = Image.open(io.BytesIO(content_bytes))
     asp = pil.width / pil.height
-    # Calculate original max fit
     dw, dh = (aw, aw / asp) if aw / asp <= ah else (ah * asp, ah)
-    # Apply the scale reduction
     dw *= scale_factor
     dh *= scale_factor
-    # Centers the smaller image in the available area
     ix = LEFT_MM * mm + (aw - dw) / 2
     iy = CBOT_MM * mm + (ah - dh) / 2
     c.drawImage(ImageReader(io.BytesIO(content_bytes)), ix, iy,
                 width=dw, height=dh, preserveAspectRatio=True)
 
 
-def generate_pdf(xlsx_bytes, xlsx_name, content_bytes, doc_name) -> bytes:
-    bg_bytes  = load_background()
-    rows      = read_excel_rows(xlsx_bytes)
-    img_bytes = extract_image_from_drawing(content_bytes)
+# ─── Main PDF generator ───────────────────────────────────────────────────────
 
-    # Pull description + part no from first data row (row index 1)
-    part_desc = rows[1][4] if len(rows) > 1 and len(rows[1]) > 4 else doc_name
-    part_no   = rows[1][1] if len(rows) > 1 and len(rows[1]) > 1 else ""
-
+def generate_pdf(slots: list, start_page: int) -> bytes:
+    """
+    slots: list of dicts — xlsx_bytes, pdf_bytes, group_no, ref_no
+    start_page: page number for first page
+    Each slot produces 2 pages: drawing page then table page.
+    """
+    bg_bytes = load_background()
     buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
+    c   = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))
 
-    # Page 1 — Engineering drawing
-    draw_background(c, bg_bytes)
-    draw_content_image(c, img_bytes)
-    draw_footer_centered(c, part_desc, part_no)
-    c.showPage()
+    current_page = start_page
 
-    # Page 2 — Parts table
-    draw_background(c, bg_bytes)
-    draw_excel_table(c, rows)
-    draw_footer_centered(c, part_desc, part_no)
-    c.showPage()
+    for slot in slots:
+        rows      = read_excel_rows(slot["xlsx_bytes"])
+        img_bytes = extract_image_from_drawing(slot["pdf_bytes"])
+        group_no  = slot["group_no"].strip()
+        ref_no    = slot["ref_no"].strip()
+
+        part_desc = rows[1][4] if len(rows) > 1 and len(rows[1]) > 4 else ""
+        part_no   = rows[1][1] if len(rows) > 1 and len(rows[1]) > 1 else ""
+
+        # Page A — Engineering drawing
+        draw_background(c, bg_bytes)
+        draw_content_image(c, img_bytes)
+        draw_footer_centered(c, part_desc, part_no)
+        draw_badge(c, group_no, ref_no)
+        draw_page_number(c, current_page)
+        c.showPage()
+        current_page += 1
+
+        # Page B — Parts table
+        draw_background(c, bg_bytes)
+        draw_excel_table(c, rows)
+        draw_footer_centered(c, part_desc, part_no)
+        draw_badge(c, group_no, ref_no)
+        draw_page_number(c, current_page)
+        c.showPage()
+        current_page += 1
 
     c.save()
     return buf.getvalue()
 
+
 # ─── UI ───────────────────────────────────────────────────────────────────────
 
-# Header
-col1, col2 = st.columns([1, 6])
-with col1:
-    st.markdown("## 📄")
-with col2:
-    st.markdown("## Aquarius Document Generator")
-    st.caption("Upload your Excel parts list and engineering drawing PDF to generate a branded 2-page document.")
-
+st.markdown("## 📄 Aquarius Document Generator")
+st.caption("Add slots below — each slot is one drawing PDF + one Excel parts list. "
+           "All slots compile into a single paginated PDF.")
 st.divider()
 
-# Upload section
-col_a, col_b = st.columns(2)
+# ── Session state ─────────────────────────────────────────────────────────────
+if "num_slots" not in st.session_state:
+    st.session_state.num_slots = 1
 
-with col_a:
-    st.markdown("#### 📊 Parts List")
-    xlsx_file = st.file_uploader(
-        "Upload Excel file",
-        type=["xlsx", "xls"],
-        key="xlsx",
-        help="The parts/BOM spreadsheet (.xlsx)",
-        label_visibility="collapsed",
+# ── Starting page number ──────────────────────────────────────────────────────
+col_pg, _ = st.columns([1, 3])
+with col_pg:
+    start_page = st.number_input(
+        "📄 Starting page number",
+        min_value=1, value=1, step=1,
+        help="The first drawing page will carry this number; subsequent pages increment automatically.",
     )
-    if xlsx_file:
-        st.success(f"✅ {xlsx_file.name}  ({xlsx_file.size // 1024} KB)")
-
-with col_b:
-    st.markdown("#### 🖼️ Engineering Drawing")
-    pdf_file = st.file_uploader(
-        "Upload Drawing PDF",
-        type=["pdf"],
-        key="pdf",
-        help="The engineering drawing PDF",
-        label_visibility="collapsed",
-    )
-    if pdf_file:
-        st.success(f"✅ {pdf_file.name}  ({pdf_file.size // 1024} KB)")
 
 st.markdown("---")
 
-# Document name (auto-filled, editable)
-if xlsx_file:
-    default_name = derive_doc_name(xlsx_file.name)
-else:
-    default_name = ""
+# ── Slot cards ────────────────────────────────────────────────────────────────
+slot_data  = []   # accumulate ready slots in order
+page_cursor = int(start_page)
 
-doc_name = st.text_input(
-    "📝 Document name (shown in footer)",
-    value=default_name,
-    placeholder="e.g. SPEM02AO01  SB36 Z",
-    help="This appears centred in the footer of both pages. Auto-filled from filename.",
-)
+for i in range(st.session_state.num_slots):
+    with st.container(border=True):
+        hcol, _ = st.columns([6, 1])
+        with hcol:
+            st.markdown(
+                f"**Slot {i + 1}** &nbsp;·&nbsp; "
+                f"<span style='color:gray;font-size:13px'>pages {page_cursor} & {page_cursor + 1}</span>",
+                unsafe_allow_html=True,
+            )
+
+        c1, c2, c3, c4 = st.columns([2.5, 2.5, 1, 1.2])
+
+        with c1:
+            pdf_f = st.file_uploader(
+                "🖼️ Engineering Drawing (PDF)",
+                type=["pdf"],
+                key=f"pdf_{i}",
+            )
+        with c2:
+            xlsx_f = st.file_uploader(
+                "📊 Parts List (Excel)",
+                type=["xlsx", "xls"],
+                key=f"xlsx_{i}",
+            )
+        with c3:
+            group_no = st.text_input(
+                "Group No.",
+                key=f"group_{i}",
+                placeholder="e.g. 3.1.0",
+            )
+        with c4:
+            ref_no = st.text_input(
+                "Reference No.",
+                key=f"ref_{i}",
+                placeholder="e.g. 3100-020415",
+            )
+
+        if pdf_f and xlsx_f:
+            st.success(f"✅ Ready — pages {page_cursor} (drawing) & {page_cursor + 1} (table)")
+            slot_data.append({
+                "xlsx_bytes": xlsx_f.getvalue(),
+                "pdf_bytes":  pdf_f.getvalue(),
+                "group_no":   group_no,
+                "ref_no":     ref_no,
+            })
+        else:
+            missing = []
+            if not pdf_f:  missing.append("Drawing PDF")
+            if not xlsx_f: missing.append("Excel file")
+            st.warning(f"⚠️ Missing: {', '.join(missing)}")
+
+    page_cursor += 2   # each slot uses 2 pages
 
 st.markdown("")
 
-# Preview table
-if xlsx_file:
-    with st.expander("👁️ Preview Excel data", expanded=False):
-        try:
-            rows = read_excel_rows(xlsx_file.getvalue())
-            if rows:
-                import pandas as pd
-                df = pd.DataFrame(rows[1:], columns=rows[0] if rows else [])
-                st.dataframe(df, use_container_width=True, hide_index=True)
-        except Exception as e:
-            st.warning(f"Could not preview: {e}")
+# ── Add / Remove buttons ──────────────────────────────────────────────────────
+ba, br, *_ = st.columns([1, 1, 4])
+with ba:
+    if st.button("➕  Add slot", use_container_width=True):
+        st.session_state.num_slots += 1
+        st.rerun()
+with br:
+    if st.session_state.num_slots > 1:
+        if st.button("➖  Remove last", use_container_width=True):
+            st.session_state.num_slots -= 1
+            st.rerun()
 
-# Generate button
-ready = xlsx_file and pdf_file and doc_name.strip()
+st.divider()
+
+# ── Generate ──────────────────────────────────────────────────────────────────
+total_slots = st.session_state.num_slots
+ready_slots = len(slot_data)
+
+if ready_slots < total_slots:
+    st.info(f"{ready_slots} of {total_slots} slots ready. "
+            f"Fill all slots before generating, or remove empty ones.")
 
 if st.button(
-    "⚙️  Generate 2-page PDF",
+    f"⚙️  Generate PDF  ({ready_slots * 2} pages)",
     type="primary",
     use_container_width=True,
-    disabled=not ready,
+    disabled=(ready_slots == 0),
 ):
-    with st.spinner("Generating your document…"):
+    with st.spinner("Generating…"):
         try:
-            pdf_bytes = generate_pdf(
-                xlsx_bytes    = xlsx_file.getvalue(),
-                xlsx_name     = xlsx_file.name,
-                content_bytes = pdf_file.getvalue(),
-                doc_name      = doc_name.strip(),
+            pdf_bytes = generate_pdf(slot_data, start_page=int(start_page))
+            st.success(
+                f"✅ Done — {ready_slots * 2} pages, "
+                f"numbered {start_page}–{int(start_page) + ready_slots * 2 - 1}"
             )
-            out_filename = (doc_name.strip().replace("  ", "__").replace(" ", "_") or "output") + ".pdf"
-
-            st.success("✅ PDF generated successfully!")
             st.balloons()
-
             st.download_button(
-                label     = "⬇️  Download PDF",
-                data      = pdf_bytes,
-                file_name = out_filename,
-                mime      = "application/pdf",
+                label            = "⬇️  Download PDF",
+                data             = pdf_bytes,
+                file_name        = "aquarius_document.pdf",
+                mime             = "application/pdf",
                 use_container_width=True,
             )
         except Exception as e:
             st.error(f"Generation failed: {e}")
             st.exception(e)
 
-# Footer
 st.divider()
-st.caption("Aquarius Industries · Internal tool · Template is fixed — just upload new Excel + Drawing each time.")
+st.caption("Aquarius Industries · Internal tool · All slots compile into one PDF.")

@@ -124,7 +124,7 @@ def draw_excel_table(c, rows):
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 3.3),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3.3),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 3),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 4),
         ("RIGHTPADDING",  (0, 0), (-1, -1), 3),
     ]))
     margin_top = 0.5 * mm 

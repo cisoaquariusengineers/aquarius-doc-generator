@@ -135,7 +135,7 @@ def draw_content_image(c, content_bytes):
     aw = AVAIL_W_MM * mm
     ah = AVAIL_H_MM * mm
     # ADJUST THIS: 0.8 = 80% size, 0.5 = 50% size
-    scale_factor = 0.8 
+    scale_factor = 0.87 
     pil = Image.open(io.BytesIO(content_bytes))
     asp = pil.width / pil.height
     # Calculate original max fit

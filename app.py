@@ -38,17 +38,41 @@ def load_background():
         return z.read(name)
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+def extract_image_from_drawing(file_bytes: bytes) -> bytes:
+    """Extract an image from either a ZIP-wrapped PDF or a plain PDF."""
+    
+    # 1. Try ZIP first (some CAD-export PDFs are ZIP containers)
+    if zipfile.is_zipfile(io.BytesIO(file_bytes)):
+        with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as z:
+            name = next(
+                (n for n in z.namelist() if n.lower().endswith((".jpeg", ".jpg", ".png"))),
+                None,
+            )
+            if name:
+                return z.read(name)
 
-def extract_image_from_zip(file_bytes: bytes) -> bytes:
-    with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as z:
-        name = next(
-            (n for n in z.namelist() if n.lower().endswith((".jpeg", ".jpg", ".png"))),
-            None,
-        )
-        if name is None:
-            raise ValueError("No image found inside the drawing PDF.")
-        return z.read(name)
+    # 2. Try to rasterize the first page of the PDF → PNG in memory
+    try:
+        import pdf2image
+        images = pdf2image.convert_from_bytes(file_bytes, dpi=150, first_page=1, last_page=1)
+        if images:
+            buf = io.BytesIO()
+            images[0].save(buf, format="PNG")
+            return buf.getvalue()
+    except Exception:
+        pass
 
+    # 3. Fallback: try extracting an embedded image via pypdf
+    try:
+        import pypdf
+        reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+        for page in reader.pages:
+            for img_obj in page.images:
+                return img_obj.data
+    except Exception:
+        pass
+
+    raise ValueError("Could not extract an image from the uploaded drawing PDF.")
 
 def read_excel_rows(file_bytes: bytes) -> list:
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes))
@@ -121,7 +145,7 @@ def draw_content_image(c, content_bytes):
 def generate_pdf(xlsx_bytes, xlsx_name, content_bytes, doc_name) -> bytes:
     bg_bytes = load_background()
     rows     = read_excel_rows(xlsx_bytes)
-    img_bytes = extract_image_from_zip(content_bytes)
+    img_bytes = extract_image_from_drawing(content_bytes)
 
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(PAGE_W, PAGE_H))

@@ -110,25 +110,23 @@ def draw_background(c, bg_bytes):
     c.drawImage(ImageReader(io.BytesIO(bg_bytes)), 0, 0,
                 width=PAGE_W, height=PAGE_H, preserveAspectRatio=False)
 
-
 def draw_footer_centered(c, doc_name, part_no=""):
     cx = (LEFT_MM + RIGHT_MM) / 2 * mm
-    c.setFont("Helvetica-Bold", 19)
+    c.setFont("Helvetica-Bold", 10)
     c.setFillColorRGB(0, 0, 0)
-    c.drawCentredString(cx, (FCENTER_MM + 4) * mm, doc_name)
+    c.drawCentredString(cx, (FCENTER_MM + 3) * mm, doc_name)
     if part_no:
-        c.setFont("Helvetica", 11)
-        c.drawCentredString(cx, (FCENTER_MM - 1) * mm, part_no)
+        c.setFont("Helvetica", 8)
+        c.drawCentredString(cx, (FCENTER_MM - 2) * mm, part_no)
 
 def draw_badge(c, group_no: str, ref_no: str):
-    """Group no. and ref no. plain text, bottom-right of footer."""
-    rx = RIGHT_MM * mm - 2 * mm
-    c.setFont("Helvetica-Bold", 18)
+    rx = (RIGHT_MM - 2) * mm
+    c.setFont("Helvetica-Bold", 10)
     c.setFillColorRGB(0, 0, 0)
-    c.drawCentredString(rx, (FCENTER_MM + 4) * mm, group_no)
+    c.drawRightString(rx, (FCENTER_MM + 3) * mm, group_no)
     if ref_no:
-        c.setFont("Helvetica", 14)
-        c.drawCentredString(rx, (FCENTER_MM - 1) * mm, ref_no)
+        c.setFont("Helvetica", 8)
+        c.drawRightString(rx, (FCENTER_MM - 2) * mm, ref_no)
 
 def draw_page_number(c, page_num: int):
     """Page number centred at the very bottom of the page."""

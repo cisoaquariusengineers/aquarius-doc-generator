@@ -109,8 +109,8 @@ def draw_excel_table(c, rows):
     cw = [aw * 0.04, aw * 0.15, aw * 0.05, aw * 0.20, aw * 0.56] # Widened to prevent wrap
     
     # FIX: Increased leading to 20 so 15pt font doesn't overlap
-    cs = ParagraphStyle("c", fontName="Helvetica",      fontSize=15, leading=20)
-    hs = ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=15, leading=20)
+    cs = ParagraphStyle("c", fontName="Times New Roman",      fontSize=15, leading=20)
+    hs = ParagraphStyle("h", fontName="Times New Roman-Bold", fontSize=15, leading=20)
     
     data = [
         [Paragraph(str(cell), hs if i == 0 else cs) for cell in row]

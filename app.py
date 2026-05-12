@@ -113,26 +113,26 @@ def draw_background(c, bg_bytes):
 
 def draw_footer_centered(c, doc_name, part_no=""):
     cx = (LEFT_MM + RIGHT_MM) / 2 * mm
-    c.setFont("Helvetica-Bold", 11)
+    c.setFont("Helvetica-Bold", 19)
     c.setFillColorRGB(0, 0, 0)
     c.drawCentredString(cx, (FCENTER_MM + 4) * mm, doc_name)
     if part_no:
-        c.setFont("Helvetica", 9)
+        c.setFont("Helvetica", 11)
         c.drawCentredString(cx, (FCENTER_MM - 1) * mm, part_no)
 
 def draw_badge(c, group_no: str, ref_no: str):
     """Group no. and ref no. plain text, bottom-right of footer."""
     rx = RIGHT_MM * mm - 2 * mm
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("Helvetica-Bold", 18)
     c.setFillColorRGB(0, 0, 0)
-    c.drawRightString(rx, (FCENTER_MM + 4) * mm, group_no)
+    c.drawCentredString(rx, (FCENTER_MM + 4) * mm, group_no)
     if ref_no:
-        c.setFont("Helvetica", 9)
-        c.drawRightString(rx, (FCENTER_MM - 1) * mm, ref_no)
+        c.setFont("Helvetica", 14)
+        c.drawCentredString(rx, (FCENTER_MM - 1) * mm, ref_no)
 
 def draw_page_number(c, page_num: int):
     """Page number centred at the very bottom of the page."""
-    c.setFont("Helvetica", 8)
+    c.setFont("Helvetica", 12)
     c.setFillColorRGB(0, 0, 0)
     cx = (LEFT_MM + RIGHT_MM) / 2 * mm
     c.drawCentredString(cx, 6 * mm, str(page_num))

@@ -122,10 +122,10 @@ def draw_excel_table(c, rows):
         ("TEXTCOLOR",     (0, 0), (-1, -1), colors.black),
         # REMOVED: Black line below header is gone
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 1),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+        ("TOPPADDING",    (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 4),
     ]))
     
     _, th = t.wrapOn(c, aw, ah)

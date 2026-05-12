@@ -120,34 +120,15 @@ def draw_footer_centered(c, doc_name, part_no=""):
         c.setFont("Helvetica", 9)
         c.drawCentredString(cx, (FCENTER_MM - 1) * mm, part_no)
 
-
 def draw_badge(c, group_no: str, ref_no: str):
-    """Oval badge bottom-right — group number large on top, ref no smaller below."""
-    # Oval geometry — anchored to bottom-right of footer
-    ow = 40 * mm
-    oh = 17 * mm
-    ox = RIGHT_MM * mm - ow - 1 * mm   # left edge
-    oy = FCENTER_MM * mm - oh / 2       # bottom edge (vertically centred in footer)
-
-    c.saveState()
-    c.setStrokeColorRGB(0, 0, 0)
-    c.setFillColorRGB(1, 1, 1)
-    c.setLineWidth(0.8)
-    c.ellipse(ox, oy, ox + ow, oy + oh, fill=1, stroke=1)
-
-    cx = ox + ow / 2
-    c.setFillColorRGB(0, 0, 0)
-
-    # Group number — large bold, upper half
+    """Group no. and ref no. plain text, bottom-right of footer."""
+    rx = RIGHT_MM * mm - 2 * mm
     c.setFont("Helvetica-Bold", 14)
-    c.drawCentredString(cx, oy + oh * 0.54, group_no)
-
-    # Reference number — small, lower half
-    c.setFont("Helvetica", 8)
-    c.drawCentredString(cx, oy + oh * 0.16, ref_no)
-
-    c.restoreState()
-
+    c.setFillColorRGB(0, 0, 0)
+    c.drawRightString(rx, (FCENTER_MM + 4) * mm, group_no)
+    if ref_no:
+        c.setFont("Helvetica", 9)
+        c.drawRightString(rx, (FCENTER_MM - 1) * mm, ref_no)
 
 def draw_page_number(c, page_num: int):
     """Page number centred at the very bottom of the page."""
@@ -214,31 +195,35 @@ def generate_pdf(slots: list, start_page: int) -> bytes:
     current_page = start_page
 
     for slot in slots:
-        rows      = read_excel_rows(slot["xlsx_bytes"])
-        img_bytes = extract_image_from_drawing(slot["pdf_bytes"])
-        group_no  = slot["group_no"].strip()
-        ref_no    = slot["ref_no"].strip()
+        group_no = slot["group_no"].strip()
+        ref_no   = slot["ref_no"].strip()
+        part_desc, part_no = "", ""
 
-        part_desc = rows[1][4] if len(rows) > 1 and len(rows[1]) > 4 else ""
-        part_no   = rows[1][1] if len(rows) > 1 and len(rows[1]) > 1 else ""
+        if slot["xlsx_bytes"]:
+            rows = read_excel_rows(slot["xlsx_bytes"])
+            part_desc = rows[1][4] if len(rows) > 1 and len(rows[1]) > 4 else ""
+            part_no   = rows[1][1] if len(rows) > 1 and len(rows[1]) > 1 else ""
 
-        # Page A — Engineering drawing
-        draw_background(c, bg_bytes)
-        draw_content_image(c, img_bytes)
-        draw_footer_centered(c, part_desc, part_no)
-        draw_badge(c, group_no, ref_no)
-        draw_page_number(c, current_page)
-        c.showPage()
-        current_page += 1
+        # Drawing page — only if PDF uploaded
+        if slot["pdf_bytes"]:
+            img_bytes = extract_image_from_drawing(slot["pdf_bytes"])
+            draw_background(c, bg_bytes)
+            draw_content_image(c, img_bytes)
+            draw_footer_centered(c, part_desc, part_no)
+            draw_badge(c, group_no, ref_no)
+            draw_page_number(c, current_page)
+            c.showPage()
+            current_page += 1
 
-        # Page B — Parts table
-        draw_background(c, bg_bytes)
-        draw_excel_table(c, rows)
-        draw_footer_centered(c, part_desc, part_no)
-        draw_badge(c, group_no, ref_no)
-        draw_page_number(c, current_page)
-        c.showPage()
-        current_page += 1
+        # Table page — only if Excel uploaded
+        if slot["xlsx_bytes"]:
+            draw_background(c, bg_bytes)
+            draw_excel_table(c, rows)
+            draw_footer_centered(c, part_desc, part_no)
+            draw_badge(c, group_no, ref_no)
+            draw_page_number(c, current_page)
+            c.showPage()
+            current_page += 1
 
     c.save()
     return buf.getvalue()
@@ -307,21 +292,22 @@ for i in range(st.session_state.num_slots):
                 placeholder="e.g. 3100-020415",
             )
 
-        if pdf_f and xlsx_f:
-            st.success(f"✅ Ready — pages {page_cursor} (drawing) & {page_cursor + 1} (table)")
+        has_pdf  = pdf_f  is not None
+        has_xlsx = xlsx_f is not None
+
+        if has_pdf or has_xlsx:
+            st.success(f"✅ Ready — pages {page_cursor} {'(drawing)' if has_pdf else ''} {'& ' + str(page_cursor+1) + ' (table)' if has_pdf and has_xlsx else '(table)' if has_xlsx else ''}")
             slot_data.append({
-                "xlsx_bytes": xlsx_f.getvalue(),
-                "pdf_bytes":  pdf_f.getvalue(),
+                "xlsx_bytes": xlsx_f.getvalue() if has_xlsx else None,
+                "pdf_bytes":  pdf_f.getvalue()  if has_pdf  else None,
                 "group_no":   group_no,
                 "ref_no":     ref_no,
             })
         else:
-            missing = []
-            if not pdf_f:  missing.append("Drawing PDF")
-            if not xlsx_f: missing.append("Excel file")
-            st.warning(f"⚠️ Missing: {', '.join(missing)}")
-
-    page_cursor += 2   # each slot uses 2 pages
+            st.warning("⚠️ Upload at least a Drawing PDF or Excel file.")
+            
+    pages_this_slot = (1 if pdf_f else 0) + (1 if xlsx_f else 0)
+    page_cursor += max(pages_this_slot, 1)  # at least 1 even if empty, so numbering stays predictable
 
 st.markdown("")
 

@@ -32,9 +32,23 @@ AVAIL_H_MM = CTOP_MM  - CBOT_MM
 BG_PATH = os.path.join(os.path.dirname(__file__), "empty page_03.pdf")
 
 def load_background():
-    with zipfile.ZipFile(BG_PATH, "r") as z:
-        name = next(n for n in z.namelist() if n.lower().endswith((".jpeg", ".jpg", ".png")))
-        return z.read(name)
+    with open(BG_PATH, "rb") as f:
+        file_bytes = f.read()
+
+    # Case 1: ZIP-wrapped (old background)
+    if zipfile.is_zipfile(io.BytesIO(file_bytes)):
+        with zipfile.ZipFile(io.BytesIO(file_bytes), "r") as z:
+            name = next(n for n in z.namelist() if n.lower().endswith((".jpeg", ".jpg", ".png")))
+            return z.read(name)
+
+    # Case 2: Plain PDF — rasterize first page (new background)
+    try:
+        import fitz
+        doc  = fitz.open(stream=file_bytes, filetype="pdf")
+        pix  = doc[0].get_pixmap(matrix=fitz.Matrix(3, 3), alpha=False)
+        return pix.tobytes("png")
+    except Exception as e:
+        raise ValueError(f"Could not load background: {e}")
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def extract_image_from_drawing(file_bytes: bytes) -> bytes:

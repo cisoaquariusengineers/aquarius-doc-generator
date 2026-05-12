@@ -109,8 +109,8 @@ def draw_excel_table(c, rows):
     cw = [aw * 0.04, aw * 0.15, aw * 0.05, aw * 0.20, aw * 0.56] # Widened to prevent wrap
     
     # FIX: Increased leading to 20 so 15pt font doesn't overlap
-    cs = ParagraphStyle("c", fontName="Times-Roman", fontSize=15, leading=20)
-    hs = ParagraphStyle("h", fontName="Times-Bold", fontSize=15, leading=20)
+    cs = ParagraphStyle("c", fontName="Times-Roman", fontSize=15, leading=16)
+    hs = ParagraphStyle("h", fontName="Times-Bold", fontSize=16, leading=17)
     
     data = [
         [Paragraph(str(cell), hs if i == 0 else cs) for cell in row]
@@ -122,8 +122,8 @@ def draw_excel_table(c, rows):
         ("TEXTCOLOR",     (0, 0), (-1, -1), colors.black),
         # REMOVED: Black line below header is gone
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING",    (0, 0), (-1, -1), 1),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
         ("LEFTPADDING",   (0, 0), (-1, -1), 5),
         ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
     ]))

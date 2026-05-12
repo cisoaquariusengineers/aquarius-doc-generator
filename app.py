@@ -99,7 +99,7 @@ def draw_background(c, bg_bytes):
 
 def draw_footer_centered(c, doc_name):
     cx = (LEFT_MM + RIGHT_MM) / 2 * mm
-    c.setFont("Helvetica-Bold", 10)
+    c.setFont("Helvetica-Bold", 25)
     c.setFillColorRGB(0, 0, 0)
     c.drawCentredString(cx, FCENTER_MM * mm, doc_name)
 
@@ -149,6 +149,7 @@ def draw_content_image(c, content_bytes):
     c.drawImage(ImageReader(io.BytesIO(content_bytes)), ix, iy,
                 width=dw, height=dh, preserveAspectRatio=True)
 
+
 def generate_pdf(xlsx_bytes, xlsx_name, content_bytes, doc_name) -> bytes:
     bg_bytes = load_background()
     rows     = read_excel_rows(xlsx_bytes)
@@ -159,13 +160,13 @@ def generate_pdf(xlsx_bytes, xlsx_name, content_bytes, doc_name) -> bytes:
 
     # Page 1 — Excel table
     draw_background(c, bg_bytes)
-    draw_excel_table(c, rows)
+    draw_content_image(c, img_bytes)
     draw_footer_centered(c, doc_name)
     c.showPage()
-
+    
     # Page 2 — Engineering drawing
     draw_background(c, bg_bytes)
-    draw_content_image(c, img_bytes)
+    draw_excel_table(c, rows)
     draw_footer_centered(c, doc_name)
     c.showPage()
 

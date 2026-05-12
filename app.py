@@ -108,8 +108,8 @@ def draw_excel_table(c, rows):
     aw = AVAIL_W_MM * mm
     ah = AVAIL_H_MM * mm
     cw = [aw * 0.04, aw * 0.10, aw * 0.04, aw * 0.14, aw * 0.45]  # narrower cols
-    cs = ParagraphStyle("c", fontName="Helvetica",      fontSize=8.5, leading=11)
-    hs = ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=8.5, leading=11)
+    cs = ParagraphStyle("c", fontName="Helvetica",      fontSize=15, leading=11)
+    hs = ParagraphStyle("h", fontName="Helvetica-Bold", fontSize=15, leading=11)
     data = [
         [Paragraph(cell, hs if i == 0 else cs) for cell in row]
         for i, row in enumerate(rows)
@@ -118,7 +118,7 @@ def draw_excel_table(c, rows):
     t.setStyle(TableStyle([
         ("TEXTCOLOR",     (0, 0), (-1, -1), colors.black),
         ("LINEBELOW",     (0, 0), (-1,  0), 0.8, colors.black),   # header underline only
-        ("LINEBELOW",     (0, 1), (-1, -1), 0.3, colors.HexColor("#cccccc")),  # subtle row dividers
+        ("LINEBELOW",     (0, 1), (-1, -1), 0.3, colors.HexColor("#ffffff")),  # subtle row dividers
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("TOPPADDING",    (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),

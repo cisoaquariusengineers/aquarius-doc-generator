@@ -119,7 +119,7 @@ def draw_footer_centered(c, doc_name, part_no=""):
     cx = (LEFT_MM + RIGHT_MM) / 2 * mm   # true centre
     c.setFont("Helvetica-Bold", 16)
     c.setFillColorRGB(0, 0, 0)
-    c.drawCentredString(cx, (FCENTER_MM + 6) * mm, doc_name)
+    c.drawCentredString(cx, (FCENTER_MM + 5) * mm, doc_name)
     if part_no:
         c.setFont("Helvetica", 12)
         c.drawCentredString(cx, (FCENTER_MM - 1.5) * mm, part_no)   # +5mm gap between lines
@@ -128,7 +128,7 @@ def draw_badge(c, group_no: str, ref_no: str):
     rx = (RIGHT_MM - 2) * mm
     c.setFont("Helvetica-Bold", 16)
     c.setFillColorRGB(0, 0, 0)
-    c.drawRightString(rx, (FCENTER_MM + 6) * mm, group_no)   # same Y as doc_name
+    c.drawRightString(rx, (FCENTER_MM + 5) * mm, group_no)   # same Y as doc_name
     if ref_no:
         c.setFont("Helvetica", 13)
         c.drawRightString(rx, (FCENTER_MM - 1.5) * mm, ref_no)  # same Y as part_no, +5mm gap

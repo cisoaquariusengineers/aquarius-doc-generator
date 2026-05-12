@@ -344,7 +344,6 @@ if st.button(
                 f"✅ Done — {ready_slots * 2} pages, "
                 f"numbered {start_page}–{int(start_page) + ready_slots * 2 - 1}"
             )
-            st.balloons()
             st.download_button(
                 label            = "⬇️  Download PDF",
                 data             = pdf_bytes,

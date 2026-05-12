@@ -111,12 +111,13 @@ def draw_background(c, bg_bytes):
                 width=PAGE_W, height=PAGE_H, preserveAspectRatio=False)
 
 def draw_footer_centered(c, doc_name, part_no=""):
-    cx = (LEFT_MM + RIGHT_MM) / 2 * mm
-    c.setFont("Helvetica-Bold", 17)
+    # Keep text in the middle zone, away from badge on the right
+    cx = (LEFT_MM + (RIGHT_MM - 50)) / 2 * mm   # 50mm reserved for badge
+    c.setFont("Helvetica-Bold", 16)
     c.setFillColorRGB(0, 0, 0)
     c.drawCentredString(cx, (FCENTER_MM + 3) * mm, doc_name)
     if part_no:
-        c.setFont("Helvetica", 14)
+        c.setFont("Helvetica", 13)
         c.drawCentredString(cx, (FCENTER_MM - 2) * mm, part_no)
 
 def draw_badge(c, group_no: str, ref_no: str):
